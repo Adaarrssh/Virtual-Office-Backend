@@ -43,10 +43,16 @@ io.use(socketAuth);
 // 🔥 CORS (IMPORTANT FIX)
 app.use(
   cors({
-    origin: "https://virtual-office-frontend-bu6x.vercel.app/", // open for now (deployment friendly)
+    origin: [
+      "https://virtual-office-frontend-bu6x.vercel.app",
+      "http://localhost:3000",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
 );
+app.options("*", cors());
 
 // 🔥 BODY PARSER
 app.use(express.json());
