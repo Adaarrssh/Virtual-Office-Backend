@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Team = require("../models/Team"); // ✅ ADD
 const bcrypt = require("bcryptjs");
 
 // ================= CREATE EMPLOYEE =================
@@ -16,6 +17,21 @@ const createEmployee = async (req, res) => {
     const random = Math.floor(100 + Math.random() * 900);
     const email = `${cleanName}${random}@company.com`;
 
+    // ✅ GET MANAGER
+    const manager = await User.findById(req.user.id);
+
+    if (!manager || manager.role !== "manager") {
+      return res.status(403).json({
+        message: "Only manager can create employees",
+      });
+    }
+
+    if (!manager.team) {
+      return res.status(400).json({
+        message: "Manager has no team. Create team first.",
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newEmployee = await User.create({
@@ -23,7 +39,12 @@ const createEmployee = async (req, res) => {
       email,
       password: hashedPassword,
       role: "employee",
-      team: req.user.id,
+      team: manager.team, // ✅ FIXED (IMPORTANT)
+    });
+
+    // ✅ PUSH INTO TEAM MEMBERS
+    await Team.findByIdAndUpdate(manager.team, {
+      $push: { members: newEmployee._id },
     });
 
     return res.status(201).json({
@@ -38,49 +59,29 @@ const createEmployee = async (req, res) => {
   }
 };
 
-// ================= PROFILE UPLOAD (CLOUDINARY FINAL FIX) =================
+// ================= PROFILE UPLOAD =================
 const uploadProfile = async (req, res) => {
   try {
-    console.log("🔥 CLOUDINARY UPLOAD HIT");
-
-    // ❌ file check
     if (!req.file) {
-      console.log("❌ No file received");
-      return res.status(400).json({
-        message: "No file uploaded",
-      });
+      return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // ❌ auth check
     if (!req.user || !req.user.id) {
-      console.log("❌ Auth failed");
-      return res.status(401).json({
-        message: "User not authorized",
-      });
+      return res.status(401).json({ message: "User not authorized" });
     }
 
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      console.log("❌ User not found");
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ VERY IMPORTANT (Cloudinary URL)
-    if (!req.file || !req.file.path) {
-      console.log("❌ Cloudinary path missing:", req.file);
-      return res.status(500).json({
-        message: "Cloudinary upload failed",
-      });
+    if (!req.file.path) {
+      return res.status(500).json({ message: "Cloudinary upload failed" });
     }
 
     user.profileUrl = req.file.path;
-
     await user.save();
-
-    console.log("✅ Profile Updated:", user.profileUrl);
 
     return res.status(200).json({
       message: "Profile updated successfully",
@@ -88,9 +89,7 @@ const uploadProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Upload Error:", error);
-    return res.status(500).json({
-      message: "Upload failed",
-    });
+    return res.status(500).json({ message: "Upload failed" });
   }
 };
 
@@ -159,8 +158,10 @@ const getMe = async (req, res) => {
 // ================= GET ALL EMPLOYEES =================
 const getAllEmployees = async (req, res) => {
   try {
+    const manager = await User.findById(req.user.id);
+
     const employees = await User.find({
-      team: req.user.id,
+      team: manager.team, // ✅ FIXED
       role: "employee",
     }).select("-password");
 
