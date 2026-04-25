@@ -23,11 +23,20 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-// 🔥 ALLOW ALL (DEV + DEPLOY SAFE)
-const allowedOrigins = [
-  "http://localhost:3000",
-  process.env.FRONTEND_URL, // later use this
-].filter(Boolean);
+// 🔥 CORS OPTIONS (SAME FOR ALL REQUESTS)
+const corsOptions = {
+  origin: [
+    "https://virtual-office-frontend-bu6x.vercel.app",
+    "http://localhost:3000",
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+};
+
+// ✅ APPLY CORS (IMPORTANT)
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // 🔥 SAME CONFIG
 
 // 🔥 SOCKET.IO
 const io = new Server(server, {
@@ -39,20 +48,6 @@ const io = new Server(server, {
 
 app.set("io", io);
 io.use(socketAuth);
-
-// 🔥 CORS (IMPORTANT FIX)
-app.use(
-  cors({
-    origin: [
-      "https://virtual-office-frontend-bu6x.vercel.app",
-      "http://localhost:3000",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  }),
-);
-app.options("*", cors());
 
 // 🔥 BODY PARSER
 app.use(express.json());
@@ -134,8 +129,7 @@ app.use((req, res) => {
 
 // 🔥 ERROR HANDLER
 app.use((err, req, res, next) => {
-  console.error(err);
-
+  console.error("❌ Server Error:", err);
   res.status(err.status || 500).json({
     message: err.message || "Internal Server Error",
   });
@@ -161,6 +155,7 @@ setInterval(
   60 * 60 * 1000,
 );
 
+// 🔥 START SERVER
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
