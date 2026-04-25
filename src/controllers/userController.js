@@ -26,33 +26,34 @@ const createEmployee = async (req, res) => {
       team: req.user.id,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Employee created successfully",
       email: newEmployee.email,
     });
   } catch (error) {
     console.error("❌ Create Employee Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server error while creating employee",
     });
   }
 };
 
-// ================= PROFILE UPLOAD =================
+// ================= PROFILE UPLOAD (CLOUDINARY FINAL FIX) =================
 const uploadProfile = async (req, res) => {
   try {
-    console.log("🔥 UPLOAD HIT");
-    console.log("USER:", req.user);
+    console.log("🔥 CLOUDINARY UPLOAD HIT");
 
-    // ❌ file missing
+    // ❌ file check
     if (!req.file) {
+      console.log("❌ No file received");
       return res.status(400).json({
         message: "No file uploaded",
       });
     }
 
-    // ❌ auth missing
+    // ❌ auth check
     if (!req.user || !req.user.id) {
+      console.log("❌ Auth failed");
       return res.status(401).json({
         message: "User not authorized",
       });
@@ -61,13 +62,22 @@ const uploadProfile = async (req, res) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
+      console.log("❌ User not found");
       return res.status(404).json({
         message: "User not found",
       });
     }
 
-    // ✅ SAVE IMAGE
-    user.profileUrl = `/uploads/${req.file.filename}`;
+    // ✅ VERY IMPORTANT (Cloudinary URL)
+    if (!req.file || !req.file.path) {
+      console.log("❌ Cloudinary path missing:", req.file);
+      return res.status(500).json({
+        message: "Cloudinary upload failed",
+      });
+    }
+
+    user.profileUrl = req.file.path;
+
     await user.save();
 
     console.log("✅ Profile Updated:", user.profileUrl);
@@ -111,10 +121,10 @@ const getTeamMembers = async (req, res) => {
         ]
       : employees;
 
-    res.status(200).json(teamMembers);
+    return res.status(200).json(teamMembers);
   } catch (error) {
     console.error("❌ Get Team Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error fetching team members",
     });
   }
@@ -123,6 +133,12 @@ const getTeamMembers = async (req, res) => {
 // ================= GET ME =================
 const getMe = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        message: "Not authorized",
+      });
+    }
+
     const user = await User.findById(req.user.id).select("-password");
 
     if (!user) {
@@ -131,10 +147,10 @@ const getMe = async (req, res) => {
       });
     }
 
-    res.status(200).json(user);
+    return res.status(200).json(user);
   } catch (error) {
     console.error("❌ Get Me Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error fetching user",
     });
   }
@@ -148,10 +164,10 @@ const getAllEmployees = async (req, res) => {
       role: "employee",
     }).select("-password");
 
-    res.status(200).json(employees);
+    return res.status(200).json(employees);
   } catch (error) {
     console.error("❌ Get Employees Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error fetching employees",
     });
   }
@@ -168,10 +184,10 @@ const getUserById = async (req, res) => {
       });
     }
 
-    res.status(200).json(user);
+    return res.status(200).json(user);
   } catch (error) {
     console.error("❌ Get User By ID Error:", error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error fetching user",
     });
   }
