@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const Team = require("../models/Team"); // ✅ ADD
+const Team = require("../models/Team");
 const bcrypt = require("bcryptjs");
 
 // ================= CREATE EMPLOYEE =================
@@ -17,7 +17,6 @@ const createEmployee = async (req, res) => {
     const random = Math.floor(100 + Math.random() * 900);
     const email = `${cleanName}${random}@company.com`;
 
-    // ✅ GET MANAGER
     const manager = await User.findById(req.user.id);
 
     if (!manager || manager.role !== "manager") {
@@ -26,10 +25,20 @@ const createEmployee = async (req, res) => {
       });
     }
 
+    // 🔥 FIX: agar manager ke paas team nahi hai to auto create kar
+    let team = null;
+
     if (!manager.team) {
-      return res.status(400).json({
-        message: "Manager has no team. Create team first.",
+      team = await Team.create({
+        name: `${manager.name}'s Team`,
+        manager: manager._id,
+        members: [],
       });
+
+      manager.team = team._id;
+      await manager.save();
+    } else {
+      team = await Team.findById(manager.team);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -39,13 +48,14 @@ const createEmployee = async (req, res) => {
       email,
       password: hashedPassword,
       role: "employee",
-      team: manager.team, // ✅ FIXED (IMPORTANT)
+      team: team._id,
     });
 
-    // ✅ PUSH INTO TEAM MEMBERS
-    await Team.findByIdAndUpdate(manager.team, {
-      $push: { members: newEmployee._id },
-    });
+    // 🔥 SAFE PUSH (duplicate avoid)
+    if (!team.members.includes(newEmployee._id)) {
+      team.members.push(newEmployee._id);
+      await team.save();
+    }
 
     return res.status(201).json({
       message: "Employee created successfully",
@@ -96,29 +106,27 @@ const uploadProfile = async (req, res) => {
 // ================= GET TEAM =================
 const getTeamMembers = async (req, res) => {
   try {
-    let managerId;
+    let manager;
 
     if (req.user.role === "manager") {
-      managerId = req.user.id;
+      manager = await User.findById(req.user.id);
     } else {
       const user = await User.findById(req.user.id);
-      managerId = user.team;
+      manager = await User.findById(user.team);
+    }
+
+    if (!manager || !manager.team) {
+      return res.status(200).json([]);
     }
 
     const employees = await User.find({
-      team: managerId,
+      team: manager.team,
+      role: "employee",
     }).select("-password");
 
-    const manager = await User.findById(managerId).select("-password");
+    const managerData = await User.findById(manager._id).select("-password");
 
-    const teamMembers = manager
-      ? [
-          manager,
-          ...employees.filter(
-            (e) => e._id.toString() !== manager._id.toString(),
-          ),
-        ]
-      : employees;
+    const teamMembers = managerData ? [managerData, ...employees] : employees;
 
     return res.status(200).json(teamMembers);
   } catch (error) {
@@ -160,8 +168,12 @@ const getAllEmployees = async (req, res) => {
   try {
     const manager = await User.findById(req.user.id);
 
+    if (!manager || !manager.team) {
+      return res.status(200).json([]);
+    }
+
     const employees = await User.find({
-      team: manager.team, // ✅ FIXED
+      team: manager.team,
       role: "employee",
     }).select("-password");
 
