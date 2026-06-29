@@ -2,7 +2,7 @@ const User = require("../models/User");
 const Team = require("../models/Team");
 const bcrypt = require("bcryptjs");
 
-// ================= CREATE EMPLOYEE =================
+// CREATE EMPLOYEE
 const createEmployee = async (req, res) => {
   try {
     const { name, password } = req.body;
@@ -50,9 +50,9 @@ const createEmployee = async (req, res) => {
       role: "employee",
       team: team._id,
     });
-
-    // 🔥 SAFE PUSH (duplicate avoid)
-    if (!team.members.includes(newEmployee._id)) {
+    if (
+      !team.members.some((id) => id.toString() === newEmployee._id.toString())
+    ) {
       team.members.push(newEmployee._id);
       await team.save();
     }

@@ -160,7 +160,7 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log("=================================");
-  console.log(`🚀 Server Running on PORT ${PORT}`);
-  console.log("🔥 Socket.IO + Chat + Meetings Ready");
+  console.log(` Server Running on PORT ${PORT}`);
+  console.log(" Socket.IO + Chat + Meetings Ready");
   console.log("=================================");
 });
