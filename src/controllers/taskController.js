@@ -15,14 +15,22 @@ exports.createTask = async (req, res) => {
       return res.status(400).json({ message: "Title and employee required" });
     }
 
+    const manager = await User.findById(req.user.id);
+
     const employee = await User.findById(assignedTo);
 
     if (!employee || employee.role !== "employee") {
       return res.status(400).json({ message: "Invalid employee" });
     }
 
-    if (employee.team?.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not your team member" });
+    if (
+      !manager ||
+      !manager.team ||
+      employee.team?.toString() !== manager.team.toString()
+    ) {
+      return res.status(403).json({
+        message: "Not your team member",
+      });
     }
 
     const task = await Task.create({
