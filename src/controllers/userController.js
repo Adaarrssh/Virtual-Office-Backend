@@ -103,33 +103,40 @@ const uploadProfile = async (req, res) => {
     return res.status(500).json({ message: "Upload failed" });
   }
 };
-
-// ================= GET TEAM =================
 const getTeamMembers = async (req, res) => {
   try {
-    let manager;
+    let team;
 
     if (req.user.role === "manager") {
-      manager = await User.findById(req.user.id);
+      const manager = await User.findById(req.user.id);
+
+      if (!manager || !manager.team) {
+        return res.status(200).json([]);
+      }
+
+      team = await Team.findById(manager.team);
     } else {
-      const user = await User.findById(req.user.id);
-      manager = await User.findById(user.team);
+      const employee = await User.findById(req.user.id);
+
+      if (!employee || !employee.team) {
+        return res.status(200).json([]);
+      }
+
+      team = await Team.findById(employee.team);
     }
 
-    if (!manager || !manager.team) {
+    if (!team) {
       return res.status(200).json([]);
     }
 
+    const manager = await User.findById(team.manager).select("-password");
+
     const employees = await User.find({
-      team: manager.team,
+      team: team._id,
       role: "employee",
     }).select("-password");
 
-    const managerData = await User.findById(manager._id).select("-password");
-
-    const teamMembers = managerData ? [managerData, ...employees] : employees;
-
-    return res.status(200).json(teamMembers);
+    return res.status(200).json(manager ? [manager, ...employees] : employees);
   } catch (error) {
     console.error("❌ Get Team Error:", error);
     return res.status(500).json({
