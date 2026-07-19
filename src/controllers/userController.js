@@ -2,7 +2,7 @@ const User = require("../models/User");
 const Team = require("../models/Team");
 const bcrypt = require("bcryptjs");
 
-// CREATE EMPLOYEE
+// ================= CREATE EMPLOYEE
 const createEmployee = async (req, res) => {
   try {
     const { name, password } = req.body;
@@ -28,7 +28,13 @@ const createEmployee = async (req, res) => {
     // 🔥 FIX: agar manager ke paas team nahi hai to auto create kar
     let team = null;
 
-    if (!manager.team) {
+    let team = null;
+
+    if (manager.team) {
+      team = await Team.findById(manager.team);
+    }
+
+    if (!team) {
       team = await Team.create({
         name: `${manager.name}'s Team`,
         manager: manager._id,
@@ -37,8 +43,6 @@ const createEmployee = async (req, res) => {
 
       manager.team = team._id;
       await manager.save();
-    } else {
-      team = await Team.findById(manager.team);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
