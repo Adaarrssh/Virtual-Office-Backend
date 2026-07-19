@@ -27,9 +27,6 @@ const createEmployee = async (req, res) => {
 
     // 🔥 FIX: agar manager ke paas team nahi hai to auto create kar
     let team = null;
-
-    let team = null;
-
     if (manager.team) {
       team = await Team.findById(manager.team);
     }
