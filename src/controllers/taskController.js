@@ -87,21 +87,37 @@ exports.getMyTasks = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   try {
+    console.log("========= UPDATE TASK =========");
+    console.log("User:", req.user);
+    console.log("Task ID:", req.params.id);
+    console.log("Body:", req.body);
+
     const { status, notes } = req.body;
 
     const task = await Task.findById(req.params.id);
+
+    console.log("Task Found:", task);
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
 
     if (req.user.role === "employee") {
+      console.log("Employee updating");
+
       if (task.assignedTo.toString() !== req.user.id) {
+        console.log("Not owner");
         return res.status(403).json({ message: "Not your task" });
       }
 
-      if (status) task.status = status;
-      if (notes !== undefined) task.notes = notes;
+      task.status = status;
+      task.notes = notes;
+
+      console.log("Before Save:", task);
+
+      await task.save();
+
+      console.log("Saved Successfully");
     }
 
     if (req.user.role === "manager") {
@@ -110,9 +126,9 @@ exports.updateTask = async (req, res) => {
       }
 
       Object.assign(task, req.body);
-    }
 
-    await task.save();
+      await task.save();
+    }
 
     const updatedTask = await Task.findById(task._id)
       .populate("assignedTo", "name email")
@@ -120,8 +136,8 @@ exports.updateTask = async (req, res) => {
 
     res.json(updatedTask);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error updating task" });
+    console.error("UPDATE ERROR:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
