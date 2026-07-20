@@ -29,7 +29,7 @@ const corsOptions = {
     "https://virtual-office-frontend-bu6x.vercel.app",
     "http://localhost:3000",
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
@@ -42,7 +42,7 @@ app.options("*", cors(corsOptions)); // 🔥 SAME CONFIG
 const io = new Server(server, {
   cors: {
     origin: "*", // keep open for now
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   },
 });
 
