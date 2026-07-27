@@ -10,7 +10,8 @@ exports.createMeeting = async (req, res) => {
       return res.status(400).json({ message: "Title and time required" });
     }
     const meetingTime = new Date(time);
-
+    console.log("REQ BODY TIME:", req.body.time);
+    console.log("PARSED TIME:", meetingTime);
     const roomId = `meet-${Date.now()}`;
     const meetingLink = `${process.env.FRONTEND_URL}/meet/${roomId}`;
 
