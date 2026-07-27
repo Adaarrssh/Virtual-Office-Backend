@@ -9,8 +9,6 @@ exports.createMeeting = async (req, res) => {
     if (!title || !time) {
       return res.status(400).json({ message: "Title and time required" });
     }
-
-    // 🔥 ALWAYS treat time as LOCAL (no ISO issues)
     const meetingTime = new Date(time);
 
     const roomId = `meet-${Date.now()}`;
@@ -28,8 +26,6 @@ exports.createMeeting = async (req, res) => {
     } else {
       participantIds = (selectedUsers || []).map(String);
     }
-
-    // 🔥 ALWAYS include creator
     participantIds = [...new Set([...participantIds, String(req.user.id)])];
 
     const meeting = await Meeting.create({
@@ -43,8 +39,6 @@ exports.createMeeting = async (req, res) => {
     });
 
     const io = req.app.get("io");
-
-    // 🔥 SEND CHAT INVITES
     for (const userId of participantIds) {
       if (String(userId) === String(req.user.id)) continue;
 
@@ -65,8 +59,6 @@ exports.createMeeting = async (req, res) => {
         io.to(String(userId)).emit("receiveMessage", populated);
       }
     }
-
-    // 🔥 REALTIME MEETING POPUP
     if (io) {
       participantIds.forEach((id) => {
         io.to(String(id)).emit("meetingCreated", {
@@ -91,13 +83,9 @@ exports.createMeeting = async (req, res) => {
 exports.getMeetings = async (req, res) => {
   try {
     const now = new Date();
-
-    // 🔥 AUTO DELETE (24 HOURS OLD)
     await Meeting.deleteMany({
       time: { $lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
     });
-
-    // 🔥 BOTH CREATOR + PARTICIPANT SEE
     const meetings = await Meeting.find({
       $or: [{ createdBy: req.user.id }, { participants: req.user.id }],
     }).sort({ time: -1 });
@@ -107,8 +95,6 @@ exports.getMeetings = async (req, res) => {
 
       const start = new Date(obj.time);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
-
-      // 🔥 BUFFER (2 min early live)
       if (now >= new Date(start.getTime() - 2 * 60 * 1000) && now <= end) {
         obj.status = "live";
       } else if (now > end) {
@@ -134,8 +120,6 @@ exports.deleteMeeting = async (req, res) => {
     if (!meeting) {
       return res.status(404).json({ message: "Meeting not found" });
     }
-
-    // 🔥 ONLY CREATOR CAN DELETE
     if (meeting.createdBy.toString() !== req.user.id) {
       return res.status(403).json({ message: "Not authorized" });
     }

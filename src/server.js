@@ -22,8 +22,6 @@ connectDB();
 
 const app = express();
 const server = http.createServer(app);
-
-// 🔥 CORS OPTIONS (SAME FOR ALL REQUESTS)
 const corsOptions = {
   origin: [
     "https://virtual-office-frontend-bu6x.vercel.app",
@@ -33,37 +31,26 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
-
-// ✅ APPLY CORS (IMPORTANT)
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions)); // 🔥 SAME CONFIG
 
 // 🔥 SOCKET.IO
 const io = new Server(server, {
   cors: {
-    origin: "*", // keep open for now
+    origin: "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   },
 });
-
 app.set("io", io);
 io.use(socketAuth);
-
-// 🔥 BODY PARSER
 app.use(express.json());
-
-// 🔥 SERVE UPLOADS
 app.use("/uploads", express.static("uploads"));
-
-// 🔥 ROUTES
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/messages", messageRoutes);
-
-// 🔥 SOCKET CONNECTION
 io.on("connection", (socket) => {
   const userId = String(socket.user.id);
 
@@ -112,30 +99,22 @@ io.on("connection", (socket) => {
     console.log("❌ User disconnected:", userId);
   });
 });
-
-// 🔥 HEALTH CHECK
 app.get("/", (req, res) => {
   res.status(200).json({
     message: "Virtual Office API Running 🚀",
   });
 });
-
-// 🔥 404
 app.use((req, res) => {
   res.status(404).json({
     message: "Route not found",
   });
 });
-
-// 🔥 ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err);
   res.status(err.status || 500).json({
     message: err.message || "Internal Server Error",
   });
 });
-
-// 🔥 AUTO CLEANUP
 setInterval(
   async () => {
     try {
@@ -154,8 +133,6 @@ setInterval(
   },
   60 * 60 * 1000,
 );
-
-// 🔥 START SERVER
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {

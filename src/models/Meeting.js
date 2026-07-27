@@ -53,8 +53,6 @@ const meetingSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
-/* 🔥 AUTO STATUS UPDATE (SMART LOGIC) */
 meetingSchema.methods.updateStatus = function () {
   const now = new Date();
 
@@ -69,12 +67,10 @@ meetingSchema.methods.updateStatus = function () {
     this.status = "upcoming";
   }
 };
-
-/* 🔥 AUTO DELETE INDEX (OPTIONAL ADVANCED) */
 meetingSchema.index(
   { time: 1 },
   {
-    expireAfterSeconds: 60 * 60 * 24, // 24 hours
+    expireAfterSeconds: 60 * 60 * 24,
   },
 );
 
