@@ -12,7 +12,7 @@ exports.createMeeting = async (req, res) => {
     const meetingTime = new Date(time);
 
     const roomId = `meet-${Date.now()}`;
-    const meetingLink = `http://localhost:3000/meet/${roomId}`;
+    const meetingLink = `${process.env.FRONTEND_URL}/meet/${roomId}`;
 
     let participantIds = [];
 
