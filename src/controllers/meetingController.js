@@ -19,7 +19,6 @@ exports.createMeeting = async (req, res) => {
     if (inviteType === "all" && req.user.role === "manager") {
       const users = await User.find({
         role: "employee",
-        manager: req.user.id,
       }).select("_id");
 
       participantIds = users.map((u) => String(u._id));
