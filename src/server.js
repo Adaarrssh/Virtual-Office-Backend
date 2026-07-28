@@ -55,15 +55,21 @@ io.on("connection", (socket) => {
   const userId = String(socket.user.id);
 
   console.log("🔥 User connected:", userId);
+  console.log("🆔 Socket ID:", socket.id);
 
   socket.join(userId);
 
   socket.on("joinRoom", (roomId) => {
+    console.log("📥 Joining Room:", roomId);
+
     if (!roomId) return;
+
     socket.join(roomId);
   });
 
   socket.on("sendMessage", async (data) => {
+    console.log("📤 Message Received:", data);
+
     try {
       if (
         !data?.receiver ||
@@ -76,6 +82,8 @@ io.on("connection", (socket) => {
 
       const roomId = [userId, String(data.receiver)].sort().join("_");
 
+      console.log("💬 Conversation Room:", roomId);
+
       const newMessage = await Message.create({
         sender: userId,
         receiver: data.receiver,
@@ -87,8 +95,12 @@ io.on("connection", (socket) => {
         .populate("sender", "name")
         .populate("receiver", "name");
 
+      console.log("✅ Message Saved:", populatedMsg._id);
+
       io.to(roomId).emit("receiveMessage", populatedMsg);
       io.to(String(data.receiver)).emit("receiveMessage", populatedMsg);
+
+      console.log("📨 Message Emitted");
     } catch (err) {
       console.error("❌ Socket error:", err);
       socket.emit("errorMessage", "Message failed");
