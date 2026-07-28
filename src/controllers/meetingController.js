@@ -95,10 +95,16 @@ exports.getMeetings = async (req, res) => {
 
       const start = new Date(obj.time);
       const end = new Date(start.getTime() + 60 * 60 * 1000);
-      if (now >= new Date(start.getTime() - 2 * 60 * 1000) && now <= end) {
-        obj.status = "live";
-      } else if (now > end) {
+
+      // Agar host ne manually end kar di hai to status wahi rahega
+      if (obj.status === "completed") {
+        return obj;
+      }
+
+      if (now >= end) {
         obj.status = "completed";
+      } else if (now >= start) {
+        obj.status = "live";
       } else {
         obj.status = "upcoming";
       }
@@ -130,5 +136,36 @@ exports.deleteMeeting = async (req, res) => {
   } catch (err) {
     console.error("Delete Meeting Error:", err);
     return res.status(500).json({ message: "Delete failed" });
+  }
+};
+exports.endMeeting = async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+
+    if (!meeting) {
+      return res.status(404).json({
+        message: "Meeting not found",
+      });
+    }
+
+    if (meeting.createdBy.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "Not authorized",
+      });
+    }
+
+    meeting.status = "completed";
+
+    await meeting.save();
+
+    res.json({
+      message: "Meeting ended successfully",
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      message: "Unable to end meeting",
+    });
   }
 };
