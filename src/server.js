@@ -51,25 +51,25 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/meetings", meetingRoutes);
 app.use("/api/messages", messageRoutes);
+const onlineUsers = new Map();
+
 io.on("connection", (socket) => {
   const userId = String(socket.user.id);
 
   console.log("🔥 User connected:", userId);
-  console.log("🆔 Socket ID:", socket.id);
 
   socket.join(userId);
 
+  onlineUsers.set(userId, socket.id);
+
+  io.emit("onlineUsers", Array.from(onlineUsers.keys()));
+
   socket.on("joinRoom", (roomId) => {
-    console.log("📥 Joining Room:", roomId);
-
     if (!roomId) return;
-
     socket.join(roomId);
   });
 
   socket.on("sendMessage", async (data) => {
-    console.log("📤 Message Received:", data);
-
     try {
       if (
         !data?.receiver ||
@@ -82,8 +82,6 @@ io.on("connection", (socket) => {
 
       const roomId = [userId, String(data.receiver)].sort().join("_");
 
-      console.log("💬 Conversation Room:", roomId);
-
       const newMessage = await Message.create({
         sender: userId,
         receiver: data.receiver,
@@ -92,23 +90,26 @@ io.on("connection", (socket) => {
       });
 
       const populatedMsg = await Message.findById(newMessage._id)
-        .populate("sender", "name")
-        .populate("receiver", "name");
-
-      console.log("✅ Message Saved:", populatedMsg._id);
+        .populate("sender", "name profileUrl")
+        .populate("receiver", "name profileUrl");
 
       io.to(roomId).emit("receiveMessage", populatedMsg);
-      io.to(String(data.receiver)).emit("receiveMessage", populatedMsg);
 
-      console.log("📨 Message Emitted");
+      io.to(userId).emit("receiveMessage", populatedMsg);
+
+      io.to(String(data.receiver)).emit("receiveMessage", populatedMsg);
     } catch (err) {
-      console.error("❌ Socket error:", err);
+      console.error(err);
       socket.emit("errorMessage", "Message failed");
     }
   });
 
   socket.on("disconnect", () => {
     console.log("❌ User disconnected:", userId);
+
+    onlineUsers.delete(userId);
+
+    io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 });
 app.get("/", (req, res) => {
