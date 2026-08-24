@@ -1,6 +1,5 @@
 const Meeting = require("../models/Meeting");
 const User = require("../models/User");
-const Message = require("../models/Message");
 
 exports.createMeeting = async (req, res) => {
   try {
@@ -39,26 +38,6 @@ exports.createMeeting = async (req, res) => {
     });
 
     const io = req.app.get("io");
-    for (const userId of participantIds) {
-      if (String(userId) === String(req.user.id)) continue;
-
-      const chatRoomId = [String(req.user.id), String(userId)].sort().join("_");
-
-      const msg = await Message.create({
-        sender: req.user.id,
-        receiver: userId,
-        message: `📅 ${title} | Join: ${meetingLink}`,
-        roomId: chatRoomId,
-      });
-
-      const populated = await Message.findById(msg._id)
-        .populate("sender", "name")
-        .populate("receiver", "name");
-
-      if (io) {
-        io.to(String(userId)).emit("receiveMessage", populated);
-      }
-    }
     if (io) {
       participantIds.forEach((id) => {
         io.to(String(id)).emit("meetingCreated", {

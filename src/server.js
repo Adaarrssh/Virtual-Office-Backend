@@ -56,17 +56,21 @@ const onlineUsers = new Map();
 io.on("connection", (socket) => {
   const userId = String(socket.user.id);
 
-  console.log("🔥 User connected:", userId);
+  console.log("🔥 User connected:", userId, socket.id);
 
   socket.join(userId);
 
-  onlineUsers.set(userId, socket.id);
+  if (!onlineUsers.has(userId)) {
+    onlineUsers.set(userId, new Set());
+  }
+
+  onlineUsers.get(userId).add(socket.id);
 
   io.emit("onlineUsers", Array.from(onlineUsers.keys()));
 
   socket.on("joinRoom", (roomId) => {
     if (!roomId) return;
-    socket.join(roomId);
+    socket.join(String(roomId));
   });
 
   socket.on("sendMessage", async (data) => {
@@ -80,11 +84,13 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const roomId = [userId, String(data.receiver)].sort().join("_");
+      const receiverId = String(data.receiver);
+
+      const roomId = [userId, receiverId].sort().join("_");
 
       const newMessage = await Message.create({
         sender: userId,
-        receiver: data.receiver,
+        receiver: receiverId,
         message: data.message.trim(),
         roomId,
       });
@@ -93,21 +99,26 @@ io.on("connection", (socket) => {
         .populate("sender", "name profileUrl")
         .populate("receiver", "name profileUrl");
 
-      io.to(roomId).emit("receiveMessage", populatedMsg);
-
       io.to(userId).emit("receiveMessage", populatedMsg);
-
-      io.to(String(data.receiver)).emit("receiveMessage", populatedMsg);
+      io.to(receiverId).emit("receiveMessage", populatedMsg);
     } catch (err) {
-      console.error(err);
+      console.error("❌ Send Message Error:", err);
       socket.emit("errorMessage", "Message failed");
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("❌ User disconnected:", userId);
+    console.log("❌ User disconnected:", userId, socket.id);
 
-    onlineUsers.delete(userId);
+    const userSockets = onlineUsers.get(userId);
+
+    if (userSockets) {
+      userSockets.delete(socket.id);
+
+      if (userSockets.size === 0) {
+        onlineUsers.delete(userId);
+      }
+    }
 
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
